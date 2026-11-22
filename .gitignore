@@ -1,0 +1,8 @@
+build/
+build-*/
+dist/
+build-log.txt
+.DS_Store
+.vscode/
+.idea/
+*.user
