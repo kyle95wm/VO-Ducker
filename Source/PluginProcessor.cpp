@@ -15,7 +15,7 @@ namespace
     juce::String msToText (float v, int)
     {
         return v >= 1000.0f ? juce::String (v / 1000.0f, 2) + " s"
-                            : juce::String (v, v < 10.0f ? 1 : 0) + " ms";
+                            : juce::String (v, 1) + " ms";
     }
 
     float textToMs (const juce::String& t)
@@ -31,7 +31,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VODuckerProcessor::createLay
     using Attr = juce::AudioParameterFloatAttributes;
 
     const auto dbAttr = Attr().withLabel ("dB")
-                              .withStringFromValueFunction ([] (float v, int) { return juce::String (v, 1) + " dB"; })
+                              .withStringFromValueFunction ([] (float v, int) { return juce::String (v, 2) + " dB"; })
                               .withValueFromStringFunction ([] (const juce::String& t) { return t.getFloatValue(); });
     const auto msAttr = Attr().withLabel ("ms")
                               .withStringFromValueFunction (msToText)
@@ -39,13 +39,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VODuckerProcessor::createLay
 
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::threshold, 1 }, "Threshold",
-                                     juce::NormalisableRange<float> (-60.0f, 0.0f, 0.1f), -30.0f, dbAttr));
+                                     juce::NormalisableRange<float> (-60.0f, 0.0f, 0.01f), -21.24f, dbAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::attack, 1 }, "Attack",
-                                     skewedRange (1.0f, 250.0f, 30.0f), 10.0f, msAttr));
+                                     skewedRange (1.0f, 250.0f, 30.0f), 15.0f, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::release, 1 }, "Release",
-                                     skewedRange (1.0f, 5000.0f, 300.0f), 300.0f, msAttr));
+                                     skewedRange (1.0f, 5000.0f, 300.0f), 570.4f, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::hold, 1 }, "Hold",
-                                     skewedRange (0.0f, DuckerEngine::kMaxHoldMs, 100.0f), 0.0f, msAttr));
+                                     skewedRange (0.0f, DuckerEngine::kMaxHoldMs, 100.0f), 500.0f, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::lookahead, 1 }, "Lookahead",
                                      skewedRange (0.0f, DuckerEngine::kMaxLookaheadMs, 150.0f), 0.0f, msAttr));
     return layout;
