@@ -15,13 +15,13 @@ until the last word has finished.
 
 ## Controls
 
-| Control   | Range            | What it does in an AD mix |
-|-----------|------------------|---------------------------|
-| Threshold | -60 to 0 dB      | How loud the narration has to be before the programme ducks (centre of the knee). Lower = more ducking |
-| Attack    | 1 to 250 ms      | How fast the programme goes down once a description starts |
-| Release   | 1 ms to 5 s      | How fast the programme comes back up after a description ends |
-| Hold      | 0 to 500 ms      | Keeps the programme down through short pauses between phrases, so it doesn't bob up mid-description |
-| Lookahead | 0 to 1000 ms     | How far ahead of the describer's first word the duck begins (adds the same amount of latency) |
+| Control   | Range            | Default  | What it does in an AD mix |
+|-----------|------------------|----------|---------------------------|
+| Threshold | -60 to 0 dB      | -21.24 dB | How loud the narration has to be before the programme ducks (centre of the knee). Lower = more ducking |
+| Attack    | 1 to 250 ms      | 15 ms    | How fast the programme goes down once a description starts |
+| Release   | 1 ms to 5 s      | 570.4 ms | How fast the programme comes back up after a description ends |
+| Hold      | 0 to 500 ms      | 500 ms   | Keeps the programme down through short pauses between phrases, so it doesn't bob up mid-description |
+| Lookahead | 0 to 1000 ms     | 0 ms     | How far ahead of the describer's first word the duck begins (adds the same amount of latency) |
 
 Fixed character: **4:1 ratio**, **18 dB soft knee**, peak detection (stereo-linked),
 gain reduction up to **60 dB**. There is **no makeup gain and no auto-gain**. The plugin only
@@ -53,16 +53,9 @@ compensated.
 4. Set **Lookahead** so the programme has finished dipping by the first word, then adjust
    **Attack**, **Hold** and **Release** to taste.
 
-Possible starting point (not a delivery standard; follow your client's or broadcaster's AD
-mix specs):
-
-| Control   | Start at |
-|-----------|----------|
-| Lookahead | 300 to 500 ms |
-| Attack    | 50 to 150 ms |
-| Hold      | 200 to 400 ms |
-| Release   | 500 to 1500 ms |
-| Threshold | Wherever the meter shows the ducking depth your spec asks for |
+The defaults are a good starting point for AD work. Lookahead starts at 0 so the plugin adds
+no latency until you ask for it. Always check the result against your client's or
+broadcaster's AD mix specs.
 
 The footer shows whether a sidechain is connected. **Until a sidechain is connected, VODucker
 does nothing to the track**: the programme passes through untouched, just delayed by the
@@ -116,7 +109,7 @@ ctest --test-dir build -C Release --output-on-failure
 The plugins end up in `build/VODucker_artefacts/Release/`.
 
 - **macOS:** Xcode or the Command Line Tools. Add `-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"` for a universal build.
-- **Windows:** Visual Studio 2022 with the C++ workload.
+- **Windows:** Visual Studio 2022 or newer with the C++ workload.
 - **Linux (Debian/Ubuntu):**
   ```bash
   sudo apt install build-essential cmake git libasound2-dev libjack-jackd2-dev libcurl4-openssl-dev \
