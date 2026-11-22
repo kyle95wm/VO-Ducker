@@ -17,6 +17,7 @@ endif()
 option(VO_DUCKER_BUILD_AU "Build the Audio Unit as well as the VST3 (macOS only)" ON)
 option(VO_DUCKER_BUILD_STANDALONE "Build a standalone app (handy for quick UI testing)" OFF)
 option(VO_DUCKER_BUILD_TESTS "Build the DSP test executable" ON)
+option(VO_DUCKER_BUILD_SCREENSHOT_TOOL "Build a tool that renders the UI to docs/screenshot.png" OFF)
 
 # ---------------------------------------------------------------------------
 # JUCE: use a local checkout if one is given, otherwise fetch a pinned release.
@@ -92,4 +93,29 @@ if(VO_DUCKER_BUILD_TESTS)
     add_executable(DuckerTests Tests/DuckerTests.cpp)
     target_include_directories(DuckerTests PRIVATE Source)
     add_test(NAME DuckerTests COMMAND DuckerTests)
+endif()
+
+# ---------------------------------------------------------------------------
+# Optional: render the editor to a PNG for the README (see Tools/RenderScreenshot.cpp)
+# ---------------------------------------------------------------------------
+if(VO_DUCKER_BUILD_SCREENSHOT_TOOL)
+    juce_add_console_app(VODuckerScreenshot PRODUCT_NAME "VODuckerScreenshot")
+    target_sources(VODuckerScreenshot PRIVATE
+        Tools/RenderScreenshot.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        Source/UpdateChecker.cpp)
+    target_include_directories(VODuckerScreenshot PRIVATE Source)
+    target_compile_definitions(VODuckerScreenshot PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0
+        JucePlugin_Name="VODucker"
+        JucePlugin_VersionString="${PROJECT_VERSION}"
+        JucePlugin_Build_Standalone=0
+        VO_DUCKER_GITHUB_REPO="kyle95wm/VO-Ducker")
+    target_link_libraries(VODuckerScreenshot PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+        juce::juce_recommended_config_flags)
 endif()

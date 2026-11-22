@@ -2,6 +2,8 @@
 
 A sidechain ducking compressor for **audio description (AD) post-production**. It is available as a VST3 on all platforms, plus an AU on macOS.
 
+![VODucker plugin window](docs/screenshot.png)
+
 In an AD mix, the describer's narration has to sit clearly on top of the programme audio
 (dialogue, music and effects) without the programme jumping up and down around it.
 VODucker goes on the programme audio and is keyed by the AD narration track. It turns the
@@ -118,6 +120,10 @@ The plugins end up in `build/VODucker_artefacts/Release/`.
   ```
 
 Options: `-DVO_DUCKER_BUILD_AU=OFF`, `-DVO_DUCKER_BUILD_STANDALONE=ON`, `-DVO_DUCKER_JUCE_PATH=/path/to/JUCE`.
+
+To refresh the README screenshot after changing the UI, build with
+`-DVO_DUCKER_BUILD_SCREENSHOT_TOOL=ON` and run
+`./build/VODuckerScreenshot_artefacts/Release/VODuckerScreenshot docs/screenshot.png`.
 
 ## Releasing
 

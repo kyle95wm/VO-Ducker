@@ -107,7 +107,7 @@ void ReductionMeter::paint (juce::Graphics& g)
 
     g.setColour (Colours_::text);
     g.setFont (juce::FontOptions (11.0f));
-    g.drawText ("-" + juce::String (currentDb, 1), label, juce::Justification::centred);
+    g.drawText (currentDb < 0.05f ? juce::String ("0.0") : "-" + juce::String (currentDb, 1), label, juce::Justification::centred);
 }
 
 // ---------------------------------------------------------------------------
