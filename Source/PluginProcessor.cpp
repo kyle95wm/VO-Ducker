@@ -30,11 +30,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout VODuckerProcessor::createLay
     using P = juce::AudioParameterFloat;
     using Attr = juce::AudioParameterFloatAttributes;
 
-    const auto dbAttr = Attr().withLabel ("dB")
-                              .withStringFromValueFunction ([] (float v, int) { return juce::String (v, 2) + " dB"; })
+    // No separate unit labels: the value text already includes the unit, and some hosts'
+    // generic UIs append the label to the raw 0..1 value (showing "1ms" for 1000 ms).
+    const auto dbAttr = Attr().withStringFromValueFunction ([] (float v, int) { return juce::String (v, 2) + " dB"; })
                               .withValueFromStringFunction ([] (const juce::String& t) { return t.getFloatValue(); });
-    const auto msAttr = Attr().withLabel ("ms")
-                              .withStringFromValueFunction (msToText)
+    const auto msAttr = Attr().withStringFromValueFunction (msToText)
                               .withValueFromStringFunction (textToMs);
 
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
