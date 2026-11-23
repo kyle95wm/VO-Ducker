@@ -3,6 +3,7 @@
 //   ./build/VODuckerScreenshot_artefacts/Release/VODuckerScreenshot docs/screenshot.png
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include <cstdio>
 
 int main (int argc, char** argv)
 {
@@ -14,6 +15,11 @@ int main (int argc, char** argv)
     VODuckerProcessor processor;
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
     editor->setVisible (true);
+
+    // Let the editor's update check finish (up to 5 s) so the shot shows a settled state.
+    for (int i = 0; i < 50 && processor.updateChecker.getResult().status == UpdateChecker::Status::checking; ++i)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+    juce::MessageManager::getInstance()->runDispatchLoopUntil (100); // one more UI refresh
 
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 2.0f);
 

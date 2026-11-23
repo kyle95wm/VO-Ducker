@@ -2,57 +2,17 @@
 
 namespace Colours_
 {
-    const juce::Colour background { 0xff16181d };
-    const juce::Colour panel      { 0xff1f2229 };
-    const juce::Colour outline    { 0xff2e323b };
-    const juce::Colour text       { 0xffe6e8ec };
-    const juce::Colour dimText    { 0xff8b919c };
-    const juce::Colour accent     { 0xff4fb3ff };
+    // Family palette from BrandLookAndFeel.h (shared across kyle95wm plugins),
+    // plus VODucker's own gain-reduction colour for the meter and warnings.
+    const juce::Colour background = brand::bg;
+    const juce::Colour panel      = brand::panel;
+    const juce::Colour outline    = brand::track;
+    const juce::Colour text       = brand::textMain;
+    const juce::Colour dimText    = brand::textDim;
+    const juce::Colour accent     = brand::accent;
+    const juce::Colour good       = brand::good;
+    const juce::Colour warn       = brand::warn;
     const juce::Colour reduction  { 0xffff9a3c };
-    const juce::Colour good       { 0xff59d18c };
-}
-
-// ---------------------------------------------------------------------------
-DuckerLookAndFeel::DuckerLookAndFeel()
-{
-    setColour (juce::Slider::textBoxTextColourId, Colours_::text);
-    setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    setColour (juce::Slider::textBoxBackgroundColourId, Colours_::panel);
-    setColour (juce::Label::textColourId, Colours_::text);
-    setColour (juce::TextButton::buttonColourId, Colours_::panel);
-    setColour (juce::TextButton::textColourOffId, Colours_::text);
-    setColour (juce::ToggleButton::textColourId, Colours_::dimText);
-    setColour (juce::ToggleButton::tickColourId, Colours_::accent);
-    setColour (juce::ToggleButton::tickDisabledColourId, Colours_::dimText);
-}
-
-void DuckerLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h, float pos,
-                                          float startAngle, float endAngle, juce::Slider&)
-{
-    const auto bounds = juce::Rectangle<int> (x, y, w, h).toFloat().reduced (6.0f);
-    const float radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
-    const auto centre = bounds.getCentre();
-    const float angle = startAngle + pos * (endAngle - startAngle);
-    const float track = 5.0f;
-
-    juce::Path bg;
-    bg.addCentredArc (centre.x, centre.y, radius - track, radius - track, 0.0f, startAngle, endAngle, true);
-    g.setColour (Colours_::outline);
-    g.strokePath (bg, juce::PathStrokeType (track, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-    juce::Path value;
-    value.addCentredArc (centre.x, centre.y, radius - track, radius - track, 0.0f, startAngle, angle, true);
-    g.setColour (Colours_::accent);
-    g.strokePath (value, juce::PathStrokeType (track, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-    const float knobR = radius - track * 2.6f;
-    g.setColour (Colours_::panel);
-    g.fillEllipse (juce::Rectangle<float> (knobR * 2.0f, knobR * 2.0f).withCentre (centre));
-
-    const juce::Point<float> tip (centre.x + std::sin (angle) * knobR * 0.8f,
-                                  centre.y - std::cos (angle) * knobR * 0.8f);
-    g.setColour (Colours_::text);
-    g.drawLine ({ centre.getPointOnCircumference (knobR * 0.25f, angle), tip }, 2.5f);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,11 +130,13 @@ VODuckerEditor::~VODuckerEditor()
 
 void VODuckerEditor::setupKnob (Knob& k, const char* paramId, const juce::String& name)
 {
+    // Add before styling, so the text box is built with the brand look-and-feel.
+    addAndMakeVisible (k.slider);
     k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 84, 20);
     k.slider.setDoubleClickReturnValue (true, proc.apvts.getParameter (paramId)->convertFrom0to1 (
                                                   proc.apvts.getParameter (paramId)->getDefaultValue()));
-    addAndMakeVisible (k.slider);
+    k.slider.setColour (juce::Slider::textBoxBackgroundColourId, Colours_::panel);  // VODucker's boxed values
 
     k.label.setText (name, juce::dontSendNotification);
     k.label.setJustificationType (juce::Justification::centred);
@@ -271,7 +233,7 @@ void VODuckerEditor::refreshUpdateUi()
         case S::idle:      break;
         case S::checking:  text = "Checking GitHub..."; break;
         case S::upToDate:  text = "Up to date"; colour = Colours_::good; break;
-        case S::failed:    text = r.error; colour = Colours_::reduction; break;
+        case S::failed:    text = r.error; colour = Colours_::warn; break;
         case S::updateAvailable:
             text = "Update available: v" + r.latestVersion;
             colour = Colours_::accent;
