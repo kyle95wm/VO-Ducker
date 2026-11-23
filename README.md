@@ -65,7 +65,7 @@ The defaults are a good starting point for AD work. Lookahead starts at 0 so the
 no latency until you ask for it. Always check the result against your client's or
 broadcaster's AD mix specs.
 
-The footer shows whether a sidechain is connected. **Until a sidechain is connected, VODucker
+The status line to the right of the Bypass switch shows whether a sidechain is connected. **Until a sidechain is connected, VODucker
 does nothing to the track**: the programme passes through untouched, just delayed by the
 Lookahead time so its timing doesn't jump when you connect the narration later. If your DAW
 always exposes the sidechain input, an unrouted sidechain is silent, so the result is the same.
@@ -125,7 +125,8 @@ The plugins end up in `build/VODucker_artefacts/Release/`.
     libxinerama-dev libxrandr-dev libxrender-dev libglu1-mesa-dev mesa-common-dev
   ```
 
-Options: `-DVO_DUCKER_BUILD_AU=OFF`, `-DVO_DUCKER_BUILD_STANDALONE=ON`, `-DVO_DUCKER_JUCE_PATH=/path/to/JUCE`.
+Options: `-DVO_DUCKER_BUILD_AU=OFF`, `-DVO_DUCKER_BUILD_STANDALONE=ON`, `-DVO_DUCKER_COPY_AFTER_BUILD=ON`
+(installs into your user plug-in folders after building), `-DVO_DUCKER_JUCE_PATH=/path/to/JUCE`.
 
 To refresh the README screenshot after changing the UI, build with
 `-DVO_DUCKER_BUILD_SCREENSHOT_TOOL=ON` and run

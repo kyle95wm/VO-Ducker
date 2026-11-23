@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 # The release workflow passes -DVO_DUCKER_VERSION=<tag without the leading v>,
 # so the version baked into the plugin (and used by the update checker) always
 # matches the GitHub Release it ships in.
-set(VO_DUCKER_VERSION "0.2.0" CACHE STRING "Plugin version (major.minor.patch)")
+set(VO_DUCKER_VERSION "0.2.1" CACHE STRING "Plugin version (major.minor.patch)")
 
 set(VO_DUCKER_GITHUB_REPO "kyle95wm/VO-Ducker")   # owner/repo the update checker reads
 set(VO_DUCKER_ACCENT      "0xff4fb3ff")           # blue; the plugin's one accent colour (ARGB)
