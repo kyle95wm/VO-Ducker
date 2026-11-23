@@ -25,6 +25,10 @@ public:
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
+    // Float processing only; JUCE converts double-precision audio for us. The using-declaration
+    // keeps the base class's double overloads visible (silences GCC's -Woverloaded-virtual).
+    using AudioProcessor::processBlock;
+    using AudioProcessor::processBlockBypassed;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 

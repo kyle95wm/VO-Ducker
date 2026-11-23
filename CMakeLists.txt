@@ -73,7 +73,6 @@ target_include_directories(VODucker PRIVATE Source)
 target_compile_definitions(VODucker PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0
     VO_DUCKER_GITHUB_REPO="kyle95wm/VO-Ducker")
 
 target_link_libraries(VODucker
@@ -109,7 +108,6 @@ if(VO_DUCKER_BUILD_SCREENSHOT_TOOL)
     target_compile_definitions(VODuckerScreenshot PRIVATE
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
-        JUCE_DISPLAY_SPLASH_SCREEN=0
         JucePlugin_Name="VODucker"
         JucePlugin_VersionString="${PROJECT_VERSION}"
         JucePlugin_Build_Standalone=0
