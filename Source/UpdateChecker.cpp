@@ -1,7 +1,10 @@
 #include "UpdateChecker.h"
 
-#ifndef VO_DUCKER_GITHUB_REPO
- #define VO_DUCKER_GITHUB_REPO "kyle95wm/VO-Ducker"
+// Shared by every kyle95wm plugin: keep this file identical across repos.
+// The repo comes from CMake (PLUGIN_GITHUB_REPO), the settings file and
+// User-Agent from the plugin name.
+#ifndef PLUGIN_GITHUB_REPO
+ #error "Define PLUGIN_GITHUB_REPO=\"owner/repo\" (CMakeLists.txt does this)"
 #endif
 
 namespace
@@ -15,9 +18,9 @@ namespace
     juce::PropertiesFile::Options settingsOptions()
     {
         juce::PropertiesFile::Options o;
-        o.applicationName     = "VODucker";
+        o.applicationName     = JucePlugin_Name;
         o.filenameSuffix      = ".settings";
-        o.folderName          = "VODucker";
+        o.folderName          = JucePlugin_Name;
         o.osxLibrarySubFolder = "Application Support";
         o.processLock         = nullptr;
         return o;
@@ -42,7 +45,7 @@ namespace
 class UpdateChecker::Impl : private juce::Thread
 {
 public:
-    Impl() : juce::Thread ("VODucker update check"), settings (settingsOptions())
+    Impl() : juce::Thread (juce::String (JucePlugin_Name) + " update check"), settings (settingsOptions())
     {
         // Show the last known result straight away (no network needed).
         const auto known = settings.getValue (kLatestKey);
@@ -100,13 +103,13 @@ public:
 private:
     static juce::String releasesPage()
     {
-        return juce::String ("https://github.com/") + VO_DUCKER_GITHUB_REPO + "/releases/latest";
+        return juce::String ("https://github.com/") + PLUGIN_GITHUB_REPO + "/releases/latest";
     }
 
     void run() override
     {
         Result r;
-        const juce::URL url (juce::String ("https://api.github.com/repos/") + VO_DUCKER_GITHUB_REPO + "/releases/latest");
+        const juce::URL url (juce::String ("https://api.github.com/repos/") + PLUGIN_GITHUB_REPO + "/releases/latest");
 
         int statusCode = 0;
         auto stream = url.createInputStream (
@@ -114,7 +117,7 @@ private:
                 .withConnectionTimeoutMs (8000)
                 .withStatusCode (&statusCode)
                 .withExtraHeaders ("Accept: application/vnd.github+json\r\n"
-                                   "User-Agent: VODucker-update-checker\r\n"));
+                                   "User-Agent: " JucePlugin_Name "-update-checker\r\n"));
 
         if (threadShouldExit())
             return;

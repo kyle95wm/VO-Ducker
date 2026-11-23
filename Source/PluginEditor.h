@@ -2,14 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
-
-class DuckerLookAndFeel : public juce::LookAndFeel_V4
-{
-public:
-    DuckerLookAndFeel();
-    void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h, float pos,
-                           float startAngle, float endAngle, juce::Slider&) override;
-};
+#include "BrandLookAndFeel.h"
 
 class ReductionMeter : public juce::Component
 {
@@ -47,7 +40,7 @@ private:
     void setupKnob (Knob&, const char* paramId, const juce::String& name);
 
     VODuckerProcessor& proc;
-    DuckerLookAndFeel lnf;
+    brand::LookAndFeel lnf;
 
     Knob threshold, attack, release, hold, lookahead;
     ReductionMeter meter;
