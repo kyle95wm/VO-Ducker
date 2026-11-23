@@ -10,6 +10,7 @@
 //   g --> sliding maximum over (lookahead + hold) samples      = held target
 //   held target --> attack / release smoothing (dB domain)    = env[n]
 //   main --> delay by lookahead samples --> * 10^(-env/20) --> out
+//   (bypass crossfades that gain to 1 over 20 ms; the delay stays)
 //
 // Why the sliding maximum matters: delaying the main signal alone makes the
 // gain reduction *start* early, but it also makes it *end* early (the gain
@@ -45,6 +46,7 @@ public:
     static constexpr float kMaxReductionDb = 60.0f;
     static constexpr float kMaxLookaheadMs = 1000.0f;
     static constexpr float kMaxHoldMs      = 500.0f;
+    static constexpr float kBypassFadeMs   = 20.0f;
 
     // Static gain curve: input level (dBFS) -> gain reduction in dB (>= 0).
     static float computeReductionDb (float levelDb, float thresholdDb) noexcept
@@ -81,6 +83,8 @@ public:
         dequeIdx.assign ((size_t) dequeCap, 0);
         dequeVal.assign ((size_t) dequeCap, 0.0f);
 
+        fadeStep = (float) (1.0 / std::max (1.0, kBypassFadeMs * 0.001 * fs));
+
         reset();
         setParams (params, true);
     }
@@ -92,6 +96,7 @@ public:
         dqHead = dqTail = 0;
         sampleCounter = 0;
         envDb = 0.0f;
+        wetMix = bypassed ? 0.0f : 1.0f;
         meterReductionDb.store (0.0f);
     }
 
@@ -121,6 +126,12 @@ public:
 
     int getLatencySamples() const noexcept { return lookaheadSamples; }
 
+    // Bypass fades the ducking out (or back in) over kBypassFadeMs so it never clicks.
+    // The detector keeps running while bypassed, so switching back on lands straight on
+    // the right amount of ducking, and the lookahead delay stays so timing never shifts.
+    void setBypassed (bool shouldBypass) noexcept { bypassed = shouldBypass; }
+    bool isBypassed() const noexcept { return bypassed; }
+
     // main: numMain channels, processed in place.
     // key:  numKey sidechain channels. With numKey == 0 nothing is ducked: the main signal
     //       is only delayed by the lookahead, so timing stays the same as when keyed.
@@ -148,10 +159,16 @@ public:
             envDb = held + coeff * (envDb - held);
             if (envDb < 1.0e-6f) envDb = 0.0f;
 
-            const float gain = std::pow (10.0f, -envDb * 0.05f);
-            blockMax = std::max (blockMax, envDb);
+            // 4. Bypass crossfade: blend the ducking gain towards unity.
+            const float mixTarget = bypassed ? 0.0f : 1.0f;
+            if (differs (wetMix, mixTarget))
+                wetMix = bypassed ? std::max (0.0f, wetMix - fadeStep) : std::min (1.0f, wetMix + fadeStep);
 
-            // 4. Delay the main signal by the lookahead and apply the gain.
+            const float duckGain = std::pow (10.0f, -envDb * 0.05f);
+            const float gain = 1.0f + wetMix * (duckGain - 1.0f);
+            blockMax = std::max (blockMax, envDb * wetMix);
+
+            // 5. Delay the main signal by the lookahead and apply the gain.
             const int readPos = wrap (writePos - lookaheadSamples);
             for (int c = 0; c < numMain; ++c)
             {
@@ -244,6 +261,10 @@ private:
 
     float attackCoeff = 0.0f, releaseCoeff = 0.0f;
     float envDb = 0.0f;
+
+    bool bypassed = false;
+    float wetMix = 1.0f;   // 1 = ducking applied, 0 = bypassed
+    float fadeStep = 0.001f;
 
     std::atomic<float> meterReductionDb { 0.0f };
 };

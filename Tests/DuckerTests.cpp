@@ -128,6 +128,53 @@ static void testBypassKeepsLatency()
     CHECK (x[480] == 1.0f && x[0] == 0.0f, "bypass should delay by the lookahead");
 }
 
+static void testBypassFadesCleanly()
+{
+    // Steady ducking, then bypass, then un-bypass. Output must reach unity (just delayed)
+    // while bypassed, return to the ducked level after, and never jump in one sample.
+    const double fs = 48000.0;
+    DuckerEngine e;
+    e.prepare (fs, 1);
+    DuckerParams p; p.thresholdDb = -40.0f; p.attackMs = 1.0f; p.releaseMs = 100.0f;
+    p.holdMs = 0.0f; p.lookaheadMs = 5.0f;
+    e.setParams (p, true);
+
+    const int block = 4800; // 100 ms
+    std::vector<float> x ((size_t) block), key ((size_t) block, 0.5f);
+    float* m[1] = { x.data() };
+    const float* k[1] = { key.data() };
+    float prev = 0.0f, maxStep = 0.0f;
+
+    auto runBlock = [&] (bool bypass)
+    {
+        e.setBypassed (bypass);
+        std::fill (x.begin(), x.end(), 1.0f);
+        e.process (m, 1, k, 1, block);
+        for (int i = 0; i < block; ++i)
+        {
+            maxStep = std::max (maxStep, std::abs (x[(size_t) i] - prev));
+            prev = x[(size_t) i];
+        }
+        return x.back();
+    };
+
+    runBlock (false);
+    const float ducked = runBlock (false);
+    CHECK (toDb (ducked) < -10.0f, "should be ducking before bypass, got %.2f dB", toDb (ducked));
+    maxStep = 0.0f; // only measure the bypass transitions, not the initial attack
+
+    const float bypassed = runBlock (true);
+    CHECK (near (bypassed, 1.0f, 1.0e-6f), "bypassed output should be unity, got %.6f", bypassed);
+    runBlock (true);
+    CHECK (e.getCurrentReductionDb() == 0.0f, "meter should read 0 while bypassed");
+
+    const float back = runBlock (false);
+    CHECK (near (back, ducked, 1.0e-4f), "un-bypass should return to the ducked level");
+
+    // A 20 ms fade over a ~15 dB step moves at most ~0.0002 per sample at 48 kHz.
+    CHECK (maxStep < 0.001f, "bypass switch should not click (max step %.5f)", maxStep);
+}
+
 static void testMaxLookahead()
 {
     for (double fs : { 44100.0, 48000.0, 192000.0 })
@@ -177,6 +224,7 @@ int main()
     testLookaheadAndHold (200.0f);
     testDeepReduction();
     testBypassKeepsLatency();
+    testBypassFadesCleanly();
 
     if (failures == 0)
         std::printf ("All DuckerEngine tests passed.\n");

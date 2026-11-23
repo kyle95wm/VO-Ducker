@@ -53,6 +53,9 @@ private:
     ReductionMeter meter;
 
     juce::Label infoLabel, sidechainLabel, updateLabel;
+    juce::TextButton bypassButton { "Bypass" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
+
     juce::TextButton updateButton { "Check for updates" };
     juce::ToggleButton autoCheckToggle { "Check automatically" };
     juce::String pendingReleaseUrl;

@@ -11,6 +11,7 @@ namespace ParamIDs
     inline constexpr const char* release   = "release";
     inline constexpr const char* hold      = "hold";
     inline constexpr const char* lookahead = "lookahead";
+    inline constexpr const char* bypass    = "bypass";
 }
 
 class VODuckerProcessor : public juce::AudioProcessor,
@@ -68,6 +69,9 @@ private:
     std::atomic<float>* releaseParam   = nullptr;
     std::atomic<float>* holdParam      = nullptr;
     std::atomic<float>* lookaheadParam = nullptr;
+    // Internal bypass: an ordinary automatable parameter, deliberately NOT returned from
+    // getBypassParameter(), so it never touches or follows the DAW's own bypass switch.
+    juce::AudioParameterBool* bypassParam = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VODuckerProcessor)
 };

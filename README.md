@@ -24,11 +24,17 @@ until the last word has finished.
 | Release   | 1 ms to 5 s      | 570.4 ms | How fast the programme comes back up after a description ends |
 | Hold      | 0 to 500 ms      | 500 ms   | Keeps the programme down through short pauses between phrases, so it doesn't bob up mid-description |
 | Lookahead | 0 to 1000 ms     | 0 ms     | How far ahead of the describer's first word the duck begins (adds the same amount of latency) |
+| Bypass    | On / off         | Off      | Turns the ducking off with a short 20 ms fade (no click). The Lookahead delay stays, so timing doesn't shift. Automatable |
 
 Fixed character: **4:1 ratio**, **18 dB soft knee**, peak detection (stereo-linked),
 gain reduction up to **60 dB**. There is **no makeup gain and no auto-gain**. The plugin only
 ever turns the programme down, so the programme level between descriptions is exactly what
 it was before VODucker.
+
+**Bypass** is VODucker's own internal switch, separate from your DAW's plugin bypass. It
+doesn't change or follow the DAW's bypass state. It's a normal plugin parameter, so you can
+write automation for it, for example to switch the ducking off for a stretch of the programme
+where you don't want it, and the button in the plugin window follows along.
 
 ## How the lookahead works
 

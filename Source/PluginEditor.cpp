@@ -124,6 +124,15 @@ VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
 
     addAndMakeVisible (meter);
 
+    // Internal bypass parameter: automatable, independent of the DAW's own bypass switch.
+    bypassButton.setClickingTogglesState (true);
+    bypassButton.setColour (juce::TextButton::buttonOnColourId, Colours_::reduction);
+    bypassButton.setColour (juce::TextButton::textColourOnId, Colours_::background);
+    bypassButton.setTooltip ("Bypass the ducking (keeps the lookahead delay so timing doesn't shift)");
+    addAndMakeVisible (bypassButton);
+    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        proc.apvts, ParamIDs::bypass, bypassButton);
+
     for (auto* l : { &infoLabel, &sidechainLabel, &updateLabel })
     {
         l->setFont (juce::FontOptions (12.0f));
@@ -200,7 +209,8 @@ void VODuckerEditor::resized()
     auto header = area.removeFromTop (44).reduced (12, 8);
     updateButton.setBounds (header.removeFromRight (150));
     header.removeFromRight (8);
-    updateLabel.setBounds (header.removeFromRight (220));
+    updateLabel.setBounds (header.removeFromRight (200));
+    bypassButton.setBounds (header.removeFromLeft (290).removeFromRight (76));
 
     auto footer = area.removeFromBottom (34).reduced (12, 6);
     autoCheckToggle.setBounds (footer.removeFromRight (170));
@@ -230,8 +240,19 @@ void VODuckerEditor::timerCallback()
                        juce::dontSendNotification);
 
     const bool sc = proc.isSidechainConnected();
-    sidechainLabel.setText (sc ? "AD narration key: connected" : "No sidechain: not ducking", juce::dontSendNotification);
-    sidechainLabel.setColour (juce::Label::textColourId, sc ? Colours_::good : Colours_::reduction);
+    const bool bypassed = bypassButton.getToggleState();
+    sidechainLabel.setText (bypassed ? "Bypassed: not ducking"
+                                     : sc ? "AD narration key: connected" : "No sidechain: not ducking",
+                            juce::dontSendNotification);
+    sidechainLabel.setColour (juce::Label::textColourId, sc && ! bypassed ? Colours_::good : Colours_::reduction);
+
+    const float knobAlpha = bypassed ? 0.45f : 1.0f;
+    for (auto* k : { &threshold, &attack, &release, &hold, &lookahead })
+        if (std::abs (k->slider.getAlpha() - knobAlpha) > 0.001f)
+        {
+            k->slider.setAlpha (knobAlpha);
+            k->label.setAlpha (knobAlpha);
+        }
 
     refreshUpdateUi();
 }

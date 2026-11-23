@@ -48,6 +48,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VODuckerProcessor::createLay
                                      skewedRange (0.0f, DuckerEngine::kMaxHoldMs, 100.0f), 500.0f, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::lookahead, 1 }, "Lookahead",
                                      skewedRange (0.0f, DuckerEngine::kMaxLookaheadMs, 150.0f), 0.0f, msAttr));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::bypass, 1 }, "Bypass", false));
     return layout;
 }
 
@@ -63,6 +64,8 @@ VODuckerProcessor::VODuckerProcessor()
     releaseParam   = apvts.getRawParameterValue (ParamIDs::release);
     holdParam      = apvts.getRawParameterValue (ParamIDs::hold);
     lookaheadParam = apvts.getRawParameterValue (ParamIDs::lookahead);
+    bypassParam    = dynamic_cast<juce::AudioParameterBool*> (apvts.getParameter (ParamIDs::bypass));
+    jassert (bypassParam != nullptr);
 
     startTimerHz (10);
 }
@@ -107,6 +110,8 @@ void VODuckerProcessor::prepareToPlay (double sampleRate, int)
     currentSampleRate = sampleRate;
     engine.prepare (sampleRate, getMainBusNumOutputChannels());
     engine.setParams (readParams(), true);
+    engine.setBypassed (bypassParam->get());
+    engine.reset(); // start fully in the current bypass state, no fade
     setLatencySamples (engine.getLatencySamples());
 }
 
@@ -123,6 +128,7 @@ void VODuckerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
 
     engine.setParams (readParams());
+    engine.setBypassed (bypassParam->get());
 
     auto mainBus = getBusBuffer (buffer, true, 0);
     const int numSamples = buffer.getNumSamples();
@@ -152,6 +158,7 @@ void VODuckerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
 void VODuckerProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
+    // The DAW's own bypass (separate from the internal Bypass parameter): same latency, no ducking.
     auto mainBus = getBusBuffer (buffer, true, 0);
     engine.processDelayOnly (mainBus.getArrayOfWritePointers(), mainBus.getNumChannels(), buffer.getNumSamples());
 }
