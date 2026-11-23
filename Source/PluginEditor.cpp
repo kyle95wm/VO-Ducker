@@ -3,15 +3,13 @@
 namespace Colours_
 {
     // Family palette from BrandLookAndFeel.h (shared across kyle95wm plugins),
-    // plus VODucker's own gain-reduction colour for the meter and warnings.
+    // plus VODucker's own gain-reduction colour (meter, bypass pill, sidechain status).
     const juce::Colour background = brand::bg;
     const juce::Colour panel      = brand::panel;
     const juce::Colour outline    = brand::track;
     const juce::Colour text       = brand::textMain;
     const juce::Colour dimText    = brand::textDim;
-    const juce::Colour accent     = brand::accent;
     const juce::Colour good       = brand::good;
-    const juce::Colour warn       = brand::warn;
     const juce::Colour reduction  { 0xffff9a3c };
 }
 
@@ -72,7 +70,7 @@ void ReductionMeter::paint (juce::Graphics& g)
 
 // ---------------------------------------------------------------------------
 VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
-    : AudioProcessorEditor (&p), proc (p)
+    : AudioProcessorEditor (&p), proc (p), footer (p.updateChecker)
 {
     setLookAndFeel (&lnf);
 
@@ -85,40 +83,24 @@ VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
     addAndMakeVisible (meter);
 
     // Internal bypass parameter: automatable, independent of the DAW's own bypass switch.
-    bypassButton.setClickingTogglesState (true);
-    bypassButton.setColour (juce::TextButton::buttonOnColourId, Colours_::reduction);
-    bypassButton.setColour (juce::TextButton::textColourOnId, Colours_::background);
+    brand::makePill (bypassButton, "ACTIVE", "BYPASSED", Colours_::reduction);
     bypassButton.setTooltip ("Bypass the ducking (keeps the lookahead delay so timing doesn't shift)");
     addAndMakeVisible (bypassButton);
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         proc.apvts, ParamIDs::bypass, bypassButton);
 
-    for (auto* l : { &infoLabel, &sidechainLabel, &updateLabel })
+    for (auto* l : { &infoLabel, &sidechainLabel })
     {
-        l->setFont (juce::FontOptions (12.0f));
+        l->setFont (juce::FontOptions (brand::captionSize));
         l->setColour (juce::Label::textColourId, Colours_::dimText);
         addAndMakeVisible (*l);
     }
-    updateLabel.setJustificationType (juce::Justification::centredRight);
-    sidechainLabel.setJustificationType (juce::Justification::centred);
+    infoLabel.setJustificationType (juce::Justification::centredLeft);
+    sidechainLabel.setJustificationType (juce::Justification::centredRight);
 
-    updateButton.onClick = [this]
-    {
-        if (pendingReleaseUrl.isNotEmpty())
-            juce::URL (pendingReleaseUrl).launchInDefaultBrowser();
-        else
-            proc.updateChecker.checkNow (true);
-        refreshUpdateUi();
-    };
-    addAndMakeVisible (updateButton);
+    addAndMakeVisible (footer);
 
-    autoCheckToggle.setToggleState (proc.updateChecker.isAutoCheckEnabled(), juce::dontSendNotification);
-    autoCheckToggle.onClick = [this] { proc.updateChecker.setAutoCheckEnabled (autoCheckToggle.getToggleState()); };
-    addAndMakeVisible (autoCheckToggle);
-
-    proc.updateChecker.checkNow (false); // throttled to once a day, respects the toggle
-
-    setSize (660, 330);
+    setSize (660, 430);
     startTimerHz (30);
     timerCallback();
 }
@@ -149,37 +131,29 @@ void VODuckerEditor::setupKnob (Knob& k, const char* paramId, const juce::String
 void VODuckerEditor::paint (juce::Graphics& g)
 {
     g.fillAll (Colours_::background);
-
-    auto header = getLocalBounds().removeFromTop (44);
-    g.setColour (Colours_::panel);
-    g.fillRect (header);
-
-    g.setColour (Colours_::text);
-    g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
-    g.drawText ("VODucker", header.withTrimmedLeft (16).withWidth (120), juce::Justification::centredLeft);
-
-    g.setColour (Colours_::dimText);
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("v" + UpdateChecker::getCurrentVersion(), header.withTrimmedLeft (128).withWidth (80),
-                juce::Justification::centredLeft);
+    // Non-ASCII subtitle text must go through CharPointer_UTF8 (see BrandLookAndFeel.h).
+    brand::drawHeader (g, getLocalBounds(), JucePlugin_Name, UpdateChecker::getCurrentVersion(),
+                       juce::String (juce::CharPointer_UTF8 (
+                           "Audio description ducker  \xc2\xb7  sidechain compressor with up to 1 s lookahead")));
 }
 
 void VODuckerEditor::resized()
 {
-    auto area = getLocalBounds();
+    auto area = getLocalBounds().reduced (brand::margin);
+    area.removeFromTop (brand::headerHeight);
 
-    auto header = area.removeFromTop (44).reduced (12, 8);
-    updateButton.setBounds (header.removeFromRight (150));
-    header.removeFromRight (8);
-    updateLabel.setBounds (header.removeFromRight (200));
-    bypassButton.setBounds (header.removeFromLeft (290).removeFromRight (76));
+    footer.setBounds (area.removeFromBottom (brand::footerHeight));
+    area.removeFromBottom (10);
 
-    auto footer = area.removeFromBottom (34).reduced (12, 6);
-    autoCheckToggle.setBounds (footer.removeFromRight (170));
-    infoLabel.setBounds (footer.removeFromLeft (260));
-    sidechainLabel.setBounds (footer);
+    // Pill row: ratio/latency info on the left, Bypass centred, sidechain status on the right.
+    auto pills = area.removeFromBottom (36);
+    bypassButton.setBounds (pills.withSizeKeepingCentre (130, 30));
+    const int sideW = (pills.getWidth() - 130) / 2 - 12;
+    infoLabel.setBounds (pills.removeFromLeft (sideW));
+    sidechainLabel.setBounds (pills.removeFromRight (sideW));
+    area.removeFromBottom (14);
+    area.removeFromTop (12);
 
-    area.reduce (12, 10);
     meter.setBounds (area.removeFromRight (70));
     area.removeFromRight (8);
 
@@ -198,7 +172,8 @@ void VODuckerEditor::timerCallback()
 
     const double sr = proc.getSampleRate() > 0 ? proc.getSampleRate() : 44100.0;
     const double latencyMs = 1000.0 * proc.getLatencySamples() / sr;
-    infoLabel.setText ("4:1  |  18 dB knee  |  Latency " + juce::String (latencyMs, 1) + " ms",
+    infoLabel.setText (juce::String (juce::CharPointer_UTF8 ("4:1  \xc2\xb7  18 dB knee  \xc2\xb7  latency "))
+                           + juce::String (latencyMs, 1) + " ms",
                        juce::dontSendNotification);
 
     const bool sc = proc.isSidechainConnected();
@@ -215,36 +190,4 @@ void VODuckerEditor::timerCallback()
             k->slider.setAlpha (knobAlpha);
             k->label.setAlpha (knobAlpha);
         }
-
-    refreshUpdateUi();
-}
-
-void VODuckerEditor::refreshUpdateUi()
-{
-    using S = UpdateChecker::Status;
-    const auto r = proc.updateChecker.getResult();
-
-    pendingReleaseUrl.clear();
-    juce::String text, button = "Check for updates";
-    auto colour = Colours_::dimText;
-
-    switch (r.status)
-    {
-        case S::idle:      break;
-        case S::checking:  text = "Checking GitHub..."; break;
-        case S::upToDate:  text = "Up to date"; colour = Colours_::good; break;
-        case S::failed:    text = r.error; colour = Colours_::warn; break;
-        case S::updateAvailable:
-            text = "Update available: v" + r.latestVersion;
-            colour = Colours_::accent;
-            button = "Download";
-            pendingReleaseUrl = r.releaseUrl;
-            break;
-    }
-
-    if (updateLabel.getText() != text)
-        updateLabel.setText (text, juce::dontSendNotification);
-    updateLabel.setColour (juce::Label::textColourId, colour);
-    if (updateButton.getButtonText() != button)
-        updateButton.setButtonText (button);
 }

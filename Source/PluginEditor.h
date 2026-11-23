@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "BrandLookAndFeel.h"
+#include "UpdateFooter.h"
 
 class ReductionMeter : public juce::Component
 {
@@ -28,7 +29,6 @@ public:
 
 private:
     void timerCallback() override;
-    void refreshUpdateUi();
 
     struct Knob
     {
@@ -45,13 +45,11 @@ private:
     Knob threshold, attack, release, hold, lookahead;
     ReductionMeter meter;
 
-    juce::Label infoLabel, sidechainLabel, updateLabel;
-    juce::TextButton bypassButton { "Bypass" };
+    juce::Label infoLabel, sidechainLabel;
+    juce::ToggleButton bypassButton { "Bypass" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 
-    juce::TextButton updateButton { "Check for updates" };
-    juce::ToggleButton autoCheckToggle { "Check automatically" };
-    juce::String pendingReleaseUrl;
+    UpdateFooter footer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VODuckerEditor)
 };
