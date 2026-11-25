@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DuckerEngine.h"
+#include "FactoryPresets.h"
 #include "UpdateChecker.h"
 
 namespace ParamIDs
@@ -41,11 +42,17 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return {}; }
+    // Factory presets (Source/FactoryPresets.h), exposed to hosts as programs.
+    int getNumPrograms() override { return voducker::kNumFactoryPresets; }
+    int getCurrentProgram() override { return juce::jmax (0, getPresetIndex()); }
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
+
+    // Index of the last loaded factory preset, or -1 if none was loaded (saved in the state).
+    int getPresetIndex() const;
+    // True if any preset-controlled parameter (not Threshold or Bypass) differs from the loaded preset.
+    bool isPresetModified() const;
 
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;

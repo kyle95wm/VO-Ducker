@@ -1,5 +1,6 @@
 // Headless tests for the ducking engine. Run with: ctest --test-dir build --output-on-failure
 #include "DuckerEngine.h"
+#include "FactoryPresets.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -214,8 +215,21 @@ static void testNoSidechainMeansNoDucking()
     CHECK (e.getCurrentReductionDb() == 0.0f, "meter should show no reduction without a sidechain");
 }
 
+static void testFactoryPresetsInRange()
+{
+    CHECK (voducker::kNumFactoryPresets > 1, "expected several factory presets");
+    for (const auto& p : voducker::kFactoryPresets)
+    {
+        CHECK (p.attackMs >= 1.0f && p.attackMs <= 250.0f, "%s: attack out of range", p.name);
+        CHECK (p.releaseMs >= 1.0f && p.releaseMs <= 5000.0f, "%s: release out of range", p.name);
+        CHECK (p.holdMs >= 0.0f && p.holdMs <= DuckerEngine::kMaxHoldMs, "%s: hold out of range", p.name);
+        CHECK (p.lookaheadMs >= 0.0f && p.lookaheadMs <= DuckerEngine::kMaxLookaheadMs, "%s: lookahead out of range", p.name);
+    }
+}
+
 int main()
 {
+    testFactoryPresetsInRange();
     testNoSidechainMeansNoDucking();
     testMaxLookahead();
     testStaticCurve();

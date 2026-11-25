@@ -5,6 +5,11 @@ using voducker::DuckerEngine;
 
 namespace
 {
+    const juce::Identifier presetProperty { "preset" };
+}
+
+namespace
+{
     juce::NormalisableRange<float> skewedRange (float min, float max, float centre, float step = 0.01f)
     {
         juce::NormalisableRange<float> r (min, max, step);
@@ -37,17 +42,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout VODuckerProcessor::createLay
     const auto msAttr = Attr().withStringFromValueFunction (msToText)
                               .withValueFromStringFunction (textToMs);
 
+    // Apart from Threshold, the defaults are the "Default" factory preset (entry 0).
+    const auto& d = voducker::kFactoryPresets[0];
+
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::threshold, 1 }, "Threshold",
                                      juce::NormalisableRange<float> (-60.0f, 0.0f, 0.01f), -21.24f, dbAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::attack, 1 }, "Attack",
-                                     skewedRange (1.0f, 250.0f, 30.0f), 15.0f, msAttr));
+                                     skewedRange (1.0f, 250.0f, 30.0f), d.attackMs, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::release, 1 }, "Release",
-                                     skewedRange (1.0f, 5000.0f, 300.0f), 570.4f, msAttr));
+                                     skewedRange (1.0f, 5000.0f, 300.0f), d.releaseMs, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::hold, 1 }, "Hold",
-                                     skewedRange (0.0f, DuckerEngine::kMaxHoldMs, 100.0f), 500.0f, msAttr));
+                                     skewedRange (0.0f, DuckerEngine::kMaxHoldMs, 100.0f), d.holdMs, msAttr));
     layout.add (std::make_unique<P> (juce::ParameterID { ParamIDs::lookahead, 1 }, "Lookahead",
-                                     skewedRange (0.0f, DuckerEngine::kMaxLookaheadMs, 150.0f), 0.0f, msAttr));
+                                     skewedRange (0.0f, DuckerEngine::kMaxLookaheadMs, 150.0f), d.lookaheadMs, msAttr));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::bypass, 1 }, "Bypass", false));
     return layout;
 }
@@ -66,6 +74,10 @@ VODuckerProcessor::VODuckerProcessor()
     lookaheadParam = apvts.getRawParameterValue (ParamIDs::lookahead);
     bypassParam    = dynamic_cast<juce::AudioParameterBool*> (apvts.getParameter (ParamIDs::bypass));
     jassert (bypassParam != nullptr);
+
+    // A new instance starts on the "Default" preset. Sessions saved before presets existed
+    // have no preset property, so they load as "Custom".
+    apvts.state.setProperty (presetProperty, 0, nullptr);
 
     startTimerHz (10);
 }
@@ -161,6 +173,68 @@ void VODuckerProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, 
     // The DAW's own bypass (separate from the internal Bypass parameter): same latency, no ducking.
     auto mainBus = getBusBuffer (buffer, true, 0);
     engine.processDelayOnly (mainBus.getArrayOfWritePointers(), mainBus.getNumChannels(), buffer.getNumSamples());
+}
+
+// ---------------------------------------------------------------------------
+// Factory presets
+// ---------------------------------------------------------------------------
+namespace
+{
+    struct PresetValue { const char* id; float value; };
+
+    // Threshold is left out on purpose: it's set separately and presets never touch it.
+    std::array<PresetValue, 4> presetValues (const voducker::FactoryPreset& p)
+    {
+        return { { { ParamIDs::attack,    p.attackMs },
+                   { ParamIDs::release,   p.releaseMs },
+                   { ParamIDs::hold,      p.holdMs },
+                   { ParamIDs::lookahead, p.lookaheadMs } } };
+    }
+}
+
+int VODuckerProcessor::getPresetIndex() const
+{
+    const int index = apvts.state.getProperty (presetProperty, -1);
+    return juce::isPositiveAndBelow (index, voducker::kNumFactoryPresets) ? index : -1;
+}
+
+void VODuckerProcessor::setCurrentProgram (int index)
+{
+    if (! juce::isPositiveAndBelow (index, voducker::kNumFactoryPresets))
+        return;
+
+    // Threshold and Bypass are left alone: a preset only sets the ducking timing.
+    for (const auto& pv : presetValues (voducker::kFactoryPresets[index]))
+        if (auto* param = apvts.getParameter (pv.id))
+        {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost (param->convertTo0to1 (pv.value));
+            param->endChangeGesture();
+        }
+
+    apvts.state.setProperty (presetProperty, index, nullptr);
+}
+
+const juce::String VODuckerProcessor::getProgramName (int index)
+{
+    return juce::isPositiveAndBelow (index, voducker::kNumFactoryPresets)
+               ? juce::String (voducker::kFactoryPresets[index].name) : juce::String();
+}
+
+bool VODuckerProcessor::isPresetModified() const
+{
+    const int index = getPresetIndex();
+    if (index < 0)
+        return true;
+
+    for (const auto& pv : presetValues (voducker::kFactoryPresets[index]))
+    {
+        auto* param = apvts.getParameter (pv.id);
+        // Compare on the 0..1 scale so the tolerance means the same on every (skewed) range.
+        if (param != nullptr && std::abs (param->getValue() - param->convertTo0to1 (pv.value)) > 1.0e-4f)
+            return true;
+    }
+    return false;
 }
 
 juce::AudioProcessorEditor* VODuckerProcessor::createEditor()

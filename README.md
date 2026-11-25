@@ -36,6 +36,24 @@ doesn't change or follow the DAW's bypass state. It's a normal plugin parameter,
 write automation for it, for example to switch the ducking off for a stretch of the programme
 where you don't want it, and the button in the plugin window follows along.
 
+## Presets
+
+Pick a starting point from the **Preset** menu (or step through with **<** / **>**). Your DAW
+also lists them as the plugin's factory presets. A preset sets the timing (Attack,
+Release, Hold and Lookahead). It leaves **Threshold** and **Bypass** alone: Threshold depends on
+how loud your narration is, so set it for your session and it stays put when you switch
+presets. Once you move one of the preset's knobs, the menu shows the preset name with
+*(edited)*, and your DAW session saves your settings as usual.
+
+| Preset | Attack | Release | Hold | Lookahead | Use it for |
+|--------|--------|---------|------|-----------|------------|
+| Default | 15 ms | 570.4 ms | 500 ms | 0 ms | The plugin's defaults, no latency |
+| AD Natural | 30 ms | 800 ms | 500 ms | 150 ms | General AD work: a smooth dip that's down by the first word |
+| AD Early Duck | 60 ms | 700 ms | 500 ms | 400 ms | Gentle, long fades that start well before the describer speaks |
+| AD Tight | 5 ms | 250 ms | 200 ms | 50 ms | Short descriptions in busy scenes; the programme recovers quickly |
+| Slow Recovery | 20 ms | 1.2 s | 500 ms | 250 ms | The programme swells back slowly after each description; suits music beds |
+| Zero Latency | 3 ms | 500 ms | 500 ms | 0 ms | Live or monitoring use where you can't add latency |
+
 ## How the lookahead works
 
 The programme audio is delayed by the lookahead time, while the narration (sidechain) is

@@ -29,6 +29,7 @@ public:
 
 private:
     void timerCallback() override;
+    void refreshPresetUi();
 
     struct Knob
     {
@@ -44,6 +45,10 @@ private:
 
     Knob threshold, attack, release, hold, lookahead;
     ReductionMeter meter;
+
+    juce::Label presetLabel;
+    juce::ComboBox presetBox;
+    juce::TextButton prevPresetButton { "<" }, nextPresetButton { ">" };
 
     juce::Label infoLabel, sidechainLabel;
     juce::ToggleButton bypassButton { "Bypass" };

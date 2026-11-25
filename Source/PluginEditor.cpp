@@ -73,6 +73,17 @@ VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
     : AudioProcessorEditor (&p), proc (p), footer (p.updateChecker)
 {
     setLookAndFeel (&lnf);
+    // Preset menu colours. Set on this editor's look-and-feel instance, not in the shared
+    // BrandLookAndFeel.h, which has to stay identical across plugins.
+    lnf.setColour (juce::ComboBox::backgroundColourId, Colours_::panel);
+    lnf.setColour (juce::ComboBox::outlineColourId, Colours_::outline);
+    lnf.setColour (juce::ComboBox::textColourId, Colours_::text);
+    lnf.setColour (juce::ComboBox::arrowColourId, Colours_::dimText);
+    lnf.setColour (juce::ComboBox::focusedOutlineColourId, brand::accent);
+    lnf.setColour (juce::PopupMenu::backgroundColourId, Colours_::panel);
+    lnf.setColour (juce::PopupMenu::textColourId, Colours_::text);
+    lnf.setColour (juce::PopupMenu::highlightedBackgroundColourId, brand::accent);
+    lnf.setColour (juce::PopupMenu::highlightedTextColourId, Colours_::background);
 
     setupKnob (threshold, ParamIDs::threshold, "Threshold");
     setupKnob (attack,    ParamIDs::attack,    "Attack");
@@ -89,6 +100,39 @@ VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         proc.apvts, ParamIDs::bypass, bypassButton);
 
+    // Factory presets. Item IDs are preset index + 1 (0 means "nothing selected" to ComboBox).
+    presetLabel.setText ("Preset", juce::dontSendNotification);
+    presetLabel.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    presetLabel.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (presetLabel);
+
+    for (int i = 0; i < proc.getNumPrograms(); ++i)
+        presetBox.addItem (proc.getProgramName (i), i + 1);
+    presetBox.setTextWhenNothingSelected ("Custom");
+    presetBox.setTooltip ("Load a factory preset (sets Attack, Release, Hold and Lookahead; Threshold and Bypass stay as they are)");
+    presetBox.onChange = [this]
+    {
+        if (const int id = presetBox.getSelectedId(); id > 0)
+            proc.setCurrentProgram (id - 1);
+        refreshPresetUi();
+    };
+    addAndMakeVisible (presetBox);
+
+    auto stepPreset = [this] (int delta)
+    {
+        const int n = proc.getNumPrograms();
+        const int current = proc.getPresetIndex();
+        const int next = current < 0 ? (delta > 0 ? 0 : n - 1) : (current + delta + n) % n;
+        proc.setCurrentProgram (next);
+        refreshPresetUi();
+    };
+    prevPresetButton.onClick = [stepPreset] { stepPreset (-1); };
+    nextPresetButton.onClick = [stepPreset] { stepPreset (+1); };
+    prevPresetButton.setTooltip ("Previous preset");
+    nextPresetButton.setTooltip ("Next preset");
+    addAndMakeVisible (prevPresetButton);
+    addAndMakeVisible (nextPresetButton);
+
     for (auto* l : { &infoLabel, &sidechainLabel })
     {
         l->setFont (juce::FontOptions (brand::captionSize));
@@ -100,7 +144,7 @@ VODuckerEditor::VODuckerEditor (VODuckerProcessor& p)
 
     addAndMakeVisible (footer);
 
-    setSize (660, 430);
+    setSize (660, 466);
     startTimerHz (30);
     timerCallback();
 }
@@ -141,6 +185,18 @@ void VODuckerEditor::resized()
 {
     auto area = getLocalBounds().reduced (brand::margin);
     area.removeFromTop (brand::headerHeight);
+
+    // Preset bar, centred under the header.
+    auto presetRow = area.removeFromTop (36).withTrimmedTop (6);
+    const int presetWidth = 60 + 6 + 28 + 4 + 240 + 4 + 28;
+    presetRow = presetRow.withSizeKeepingCentre (presetWidth, 28);
+    presetLabel.setBounds (presetRow.removeFromLeft (60));
+    presetRow.removeFromLeft (6);
+    prevPresetButton.setBounds (presetRow.removeFromLeft (28));
+    presetRow.removeFromLeft (4);
+    nextPresetButton.setBounds (presetRow.removeFromRight (28));
+    presetRow.removeFromRight (4);
+    presetBox.setBounds (presetRow);
 
     footer.setBounds (area.removeFromBottom (brand::footerHeight));
     area.removeFromBottom (10);
@@ -190,4 +246,31 @@ void VODuckerEditor::timerCallback()
             k->slider.setAlpha (knobAlpha);
             k->label.setAlpha (knobAlpha);
         }
+
+    refreshPresetUi();
+}
+
+void VODuckerEditor::refreshPresetUi()
+{
+    // Follows preset changes from the host and marks the preset as edited once a knob moves.
+    if (presetBox.isPopupActive())
+        return;
+
+    const int index = proc.getPresetIndex();
+    if (index < 0)
+    {
+        if (presetBox.getSelectedId() != 0 || presetBox.getText().isNotEmpty())
+            presetBox.setSelectedId (0, juce::dontSendNotification);
+    }
+    else if (! proc.isPresetModified())
+    {
+        if (presetBox.getSelectedId() != index + 1)
+            presetBox.setSelectedId (index + 1, juce::dontSendNotification);
+    }
+    else
+    {
+        const auto text = proc.getProgramName (index) + " (edited)";
+        if (presetBox.getText() != text)
+            presetBox.setText (text, juce::dontSendNotification);
+    }
 }
